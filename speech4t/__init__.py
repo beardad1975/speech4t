@@ -7,7 +7,7 @@ from . import common
 __all__ = [ 
             '語音合成', '設定語音音量', '設定語音速度', '語音說完了嗎',
             '語音辨識google', '辨識成功了嗎', '取得辨識文字',
-            '等待語音說完','語音辨識azure',
+            '等待語音說完','語音辨識azure', '關閉語音辨識'
             ]
 
 # tts init
@@ -64,7 +64,7 @@ def recog_callback(recognizer, audio):
                     key=common.recog_key, location=common.recog_location )
 
         if text :
-            print(common.recog_service, '辨識為: ', text)
+            print('<<',common.recog_service, '辨識為: ', text,'>>')
             
             with common.lock:
                 common.recog_text = text
@@ -74,43 +74,61 @@ def recog_callback(recognizer, audio):
             if common.recog_countdown <= 0 :
                 common.stopper(wait_for_stop=False)
                 common.recog_service = False
-                print('<<超過次數，辨識程式停止>>')
+                print('<<超過次數，語音辨識程式停止>>')
 
     except sr.UnknownValueError:
-            print("語音內容無法辨識")
+            print("<<語音內容無法辨識>>")
             common.recog_countdown -= 1
     except sr.RequestError as e:
-            print(common.recog_service,"語音辦識無回應(可能無網路或是超過限制): {0}".format(e))
+            print('<<',common.recog_service,"語音辦識無回應(可能無網路或是超過限制)>>: {0}".format(e))
             common.recog_countdown -= 1
 
 
 def 語音辨識google(次數=10):
+    if common.recog_service:
+        print("<<語音辨識已啟動>>")
+        return 
+
+    # start recog service
     with common.mic as source:
-        print('校正麥克風...')
+        print('<<校正麥克風...>>')
         common.recognizer.adjust_for_ambient_noise(source)    
     common.stopper = common.recognizer.listen_in_background(
                 common.mic, recog_callback, phrase_time_limit=10)
-    print('開始語音辨識: 採google服務\n請說話')
+    print('<<開始語音辨識: 採google服務>>\n<<請說話>>')
     common.recog_countdown = 次數
     common.recog_service = 'google'
 
 def 語音辨識azure(key, location='westus'):
+    if common.recog_service:
+        print("<<語音辨識已啟動>>")
+        return 
+
     with common.mic as source:
-        print('校正麥克風...')
+        print('<<校正麥克風...>>')
         common.recognizer.adjust_for_ambient_noise(source)    
     common.stopper = common.recognizer.listen_in_background(
                 common.mic, recog_callback, phrase_time_limit=10)
-    print('開始語音辨識: 採azure服務\n請說話')
+    print('<<開始語音辨識: 採azure服務>>\n<<請說話>>')
     common.recog_countdown = 1000
     common.recog_service = 'azure'
     common.recog_key = key
     common.recog_location = location
 
-
+def 關閉語音辨識():
+    if common.recog_service:
+        common.stopper(wait_for_stop=False)
+        common.recog_service = False
+        print('<<語音辨識程式停止>>')
+    else:
+        print('<<無語音辨識程式>>')        
 
 
 def 辨識成功了嗎():
-    return True if common.recog_text else False
+    if common.recog_service and common.recog_text:
+        return True
+    else:
+        return False
     
 def 取得辨識文字():
     tmp = common.recog_text
