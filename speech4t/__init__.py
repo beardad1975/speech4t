@@ -7,7 +7,8 @@ from . import common
 __all__ = [ 
             '語音合成', '設定語音音量', '設定語音速度', '語音說完了嗎',
             '語音辨識google', '辨識成功了嗎', '取得辨識文字',
-            '等待語音說完','語音辨識azure', '關閉語音辨識'
+            '等待語音說完','語音辨識azure', '暫停語音辨識',
+            '繼續語音辨識',
             ]
 
 # tts init
@@ -56,6 +57,10 @@ def 等待語音說完():
 
 #### recog wrapper function
 def recog_callback(recognizer, audio):
+    if common.recog_paused :
+        print('pausing')
+        return
+
     try:
         if common.recog_service == 'google':
             text = recognizer.recognize_google(audio,language="zh-TW" )
@@ -84,7 +89,7 @@ def recog_callback(recognizer, audio):
             common.recog_countdown -= 1
 
 
-def 語音辨識google(次數=10):
+def 語音辨識google(次數=15):
     if common.recog_service:
         print("<<語音辨識已啟動>>")
         return 
@@ -98,6 +103,7 @@ def 語音辨識google(次數=10):
     print('<<開始語音辨識: 採google服務>>\n<<請說話>>')
     common.recog_countdown = 次數
     common.recog_service = 'google'
+    common.recog_paused = False
 
 def 語音辨識azure(key, location='westus'):
     if common.recog_service:
@@ -114,14 +120,15 @@ def 語音辨識azure(key, location='westus'):
     common.recog_service = 'azure'
     common.recog_key = key
     common.recog_location = location
+    common.recog_paused = False
 
-def 關閉語音辨識():
-    if common.recog_service:
-        common.stopper(wait_for_stop=False)
-        common.recog_service = False
-        print('<<語音辨識程式停止>>')
-    else:
-        print('<<無語音辨識程式>>')        
+# def 關閉語音辨識():
+#     if common.recog_service:
+#         common.stopper(wait_for_stop=False)
+#         common.recog_service = False
+#         print('<<語音辨識程式停止>>')
+#     else:
+#         print('<<無語音辨識程式>>')        
 
 
 def 辨識成功了嗎():
@@ -135,6 +142,17 @@ def 取得辨識文字():
     with common.lock:
         common.recog_text = ''
     return tmp
+
+def 暫停語音辨識():
+    common.recog_paused = True
+    with common.lock:
+        common.recog_text = ''
+    print('<<語音辨識暫停>>')    
+
+def 繼續語音辨識():
+    common.recog_paused = False
+    print('<<語音辨識繼續>>')
+
 
 if __name__ == '__main__' :
     pass
