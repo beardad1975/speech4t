@@ -1,6 +1,7 @@
 import win32com.client
 import speech_recognition as sr
 import threading
+import time
 
 from . import common
 
@@ -8,7 +9,7 @@ __all__ = [
             '語音合成', '設定語音音量', '設定語音速度', '語音說完了嗎',
             '語音辨識google', '辨識成功了嗎', '取得辨識文字',
             '等待語音說完','語音辨識azure', '暫停語音辨識',
-            '繼續語音辨識',
+            '繼續語音辨識', '語音辨識中嗎',
             ]
 
 # tts init
@@ -19,6 +20,7 @@ common.speaker.Rate = common.DEFAULT_RATE
 
 # recognization init
 common.recognizer = sr.Recognizer()
+common.recognizer.pause_threshold = 0.5
 common.mic = sr.Microphone()
 common.lock = threading.Lock()
 
@@ -49,7 +51,7 @@ def 設定語音速度(rate):
     rate = max(min(rate,10), -10)
     common.speaker.Rate = rate
 
-def 語音說完了嗎(ms=100):
+def 語音說完了嗎(ms=1):
     return common.speaker.WaitUntilDone(ms)
 
 def 等待語音說完():
@@ -88,6 +90,58 @@ def recog_callback(recognizer, audio):
             print('<<',common.recog_service,"語音辦識無回應(可能無網路或是超過限制)>>: {0}".format(e))
             common.recog_countdown -= 1
 
+########## rewrite background listen recog thread
+def recog_thread():
+    with common.mic as source:
+        print('<<校正麥克風...>>')
+        common.recognizer.adjust_for_ambient_noise(source)  
+
+        while True:
+            if common.recog_paused:
+                #print('pausing')
+                time.sleep(0.1)
+                continue
+
+            voice = common.recognizer.listen(source, phrase_time_limit=5)
+
+            if common.recog_discard:
+                #print('paused during listening, discard voice')
+                with common.lock:
+                    common.recog_discard = False
+                continue 
+
+            try:
+                if common.recog_service == 'google':
+                    text = common.recognizer.recognize_google(voice,language="zh-TW" )
+                elif common.recog_service == 'azure':
+                    text = common.recognizer.recognize_azure(voice,language="zh-TW",
+                        key=common.recog_key, location=common.recog_location )
+
+                #text = common.recognizer.recognize_google(voice, language="zh-tw")
+                print("<<Google 語音辨識為:", text,'>>')
+
+                if common.recog_discard:
+                    #print('paused during recognizing, discard text')
+                    with common.lock:
+                        common.recog_discard = False
+                    continue
+
+                if text:
+                    with common.lock:
+                        common.recog_text = text
+                    common.recog_countdown -= 1
+                    if common.recog_countdown <= 0 :
+                        print('<<超過次數，語音辨識程式停止>>')
+                        common.recog_service = False
+                        break
+                        
+            except sr.UnknownValueError:
+                    print("<<語音內容無法辨識>>")
+                    common.recog_countdown -= 1
+            except sr.RequestError as e:
+                    print('<<',common.recog_service,"語音辦識無回應(可能無網路或是超過限制)>>: {0}".format(e))
+                    common.recog_countdown -= 1       
+
 
 def 語音辨識google(次數=15):
     if common.recog_service:
@@ -95,32 +149,66 @@ def 語音辨識google(次數=15):
         return 
 
     # start recog service
-    with common.mic as source:
-        print('<<校正麥克風...>>')
-        common.recognizer.adjust_for_ambient_noise(source)    
-    common.stopper = common.recognizer.listen_in_background(
-                common.mic, recog_callback, phrase_time_limit=10)
-    print('<<開始語音辨識: 採google服務>>\n<<請說話>>')
     common.recog_countdown = 次數
     common.recog_service = 'google'
     common.recog_paused = False
+
+    t = threading.Thread(target=recog_thread)
+    t.daemon = True
+    t.start()  
+
+    print('<<開始語音辨識: 採google服務>>\n<<請說話>>')
+
+
+# def 語音辨識google(次數=15):
+#     if common.recog_service:
+#         print("<<語音辨識已啟動>>")
+#         return 
+
+#     # start recog service
+#     with common.mic as source:
+#         print('<<校正麥克風...>>')
+#         common.recognizer.adjust_for_ambient_noise(source)    
+#     common.stopper = common.recognizer.listen_in_background(
+#                 common.mic, recog_callback, phrase_time_limit=10)
+#     print('<<開始語音辨識: 採google服務>>\n<<請說話>>')
+#     common.recog_countdown = 次數
+#     common.recog_service = 'google'
+#     common.recog_paused = False
 
 def 語音辨識azure(key, location='westus'):
     if common.recog_service:
         print("<<語音辨識已啟動>>")
         return 
 
-    with common.mic as source:
-        print('<<校正麥克風...>>')
-        common.recognizer.adjust_for_ambient_noise(source)    
-    common.stopper = common.recognizer.listen_in_background(
-                common.mic, recog_callback, phrase_time_limit=10)
-    print('<<開始語音辨識: 採azure服務>>\n<<請說話>>')
     common.recog_countdown = 1000
     common.recog_service = 'azure'
     common.recog_key = key
     common.recog_location = location
     common.recog_paused = False
+
+    t = threading.Thread(target=recog_thread)
+    t.daemon = True
+    t.start() 
+
+    print('<<開始語音辨識: 採azure服務>>\n<<請說話>>')
+
+# def 語音辨識azure(key, location='westus'):
+#     if common.recog_service:
+#         print("<<語音辨識已啟動>>")
+#         return 
+
+#     with common.mic as source:
+#         print('<<校正麥克風...>>')
+#         common.recognizer.adjust_for_ambient_noise(source)    
+#     common.stopper = common.recognizer.listen_in_background(
+#                 common.mic, recog_callback, phrase_time_limit=10)
+#     print('<<開始語音辨識: 採azure服務>>\n<<請說話>>')
+#     common.recog_countdown = 1000
+#     common.recog_service = 'azure'
+#     common.recog_key = key
+#     common.recog_location = location
+#     common.recog_paused = False
 
 # def 關閉語音辨識():
 #     if common.recog_service:
@@ -144,14 +232,21 @@ def 取得辨識文字():
     return tmp
 
 def 暫停語音辨識():
-    common.recog_paused = True
-    with common.lock:
-        common.recog_text = ''
-    print('<<語音辨識暫停>>')    
+    if not common.recog_paused: 
+        with common.lock:
+            common.recog_text = ''
+            common.recog_paused = True
+            common.recog_discard = True
+        print('<<語音辨識暫停>>')    
 
 def 繼續語音辨識():
-    common.recog_paused = False
-    print('<<語音辨識繼續>>')
+    if common.recog_paused:
+        with common.lock:
+            common.recog_paused = False
+        print('<<語音辨識繼續>>')
+
+def 語音辨識中嗎():
+    return  not common.recog_paused and not common.recog_discard
 
 
 if __name__ == '__main__' :

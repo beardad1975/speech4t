@@ -18,7 +18,9 @@ recog_key = ''
 recog_location = ''
 
 recog_text = ''
+
 recog_paused = False
+recog_discard = False
 
 recog_stopper = None
 #RECOG_COUNTDOWN = 10
