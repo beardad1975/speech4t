@@ -95,14 +95,21 @@ def recog_thread():
     with common.mic as source:
         print('<<校正麥克風...>>')
         common.recognizer.adjust_for_ambient_noise(source)  
+        
 
         while True:
             if common.recog_paused:
                 #print('pausing')
                 time.sleep(0.1)
                 continue
+                
+            try:
+                voice = common.recognizer.listen(source, timeout=3, phrase_time_limit=4)
+            except sr.WaitTimeoutError:
+                print('<<超過等待時間未有聲音>>')
+                time.sleep(0.1)
+                continue
 
-            voice = common.recognizer.listen(source, phrase_time_limit=5)
 
             if common.recog_discard:
                 #print('paused during listening, discard voice')
@@ -113,12 +120,14 @@ def recog_thread():
             try:
                 if common.recog_service == 'google':
                     text = common.recognizer.recognize_google(voice,language="zh-TW" )
+                    print("<<Google 語音辨識為:", text,'>>')
                 elif common.recog_service == 'azure':
                     text = common.recognizer.recognize_azure(voice,language="zh-TW",
                         key=common.recog_key, location=common.recog_location )
+                    print("<<Azure 語音辨識為:", text,'>>')
 
                 #text = common.recognizer.recognize_google(voice, language="zh-tw")
-                print("<<Google 語音辨識為:", text,'>>')
+                #print("<<Google 語音辨識為:", text,'>>')
 
                 if common.recog_discard:
                     #print('paused during recognizing, discard text')
@@ -141,6 +150,8 @@ def recog_thread():
             except sr.RequestError as e:
                     print('<<',common.recog_service,"語音辦識無回應(可能無網路或是超過限制)>>: {0}".format(e))
                     common.recog_countdown -= 1       
+            
+                    
 
 
 def 語音辨識google(次數=15):
@@ -157,7 +168,7 @@ def 語音辨識google(次數=15):
     t.daemon = True
     t.start()  
 
-    print('<<開始語音辨識: 採google服務>>\n<<請說話>>')
+    print('<<開始語音辨識: 採google服務>>')
 
 
 # def 語音辨識google(次數=15):
@@ -191,7 +202,7 @@ def 語音辨識azure(key, location='westus'):
     t.daemon = True
     t.start() 
 
-    print('<<開始語音辨識: 採azure服務>>\n<<請說話>>')
+    print('<<開始語音辨識: 採azure服務>>')
 
 # def 語音辨識azure(key, location='westus'):
 #     if common.recog_service:
