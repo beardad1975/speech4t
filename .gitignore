@@ -4,5 +4,5 @@ __pycache__
 build
 dist
 */*.pyc
-pie4t.egg-info/PKG-INFO
+*.egg-info*/*
 
