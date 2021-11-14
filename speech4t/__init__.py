@@ -1,3 +1,5 @@
+import sys
+
 import win32com.client
 import speech_recognition as sr
 import threading
@@ -21,7 +23,13 @@ common.speaker.Rate = common.DEFAULT_RATE
 # recognization init
 common.recognizer = sr.Recognizer()
 common.recognizer.pause_threshold = 0.5
-common.mic = sr.Microphone()
+
+try:
+    common.mic = sr.Microphone()
+except OSError:
+    print('<<無麥克風裝置, 無法使用語音辨識>>')
+    common.mic = None
+
 common.lock = threading.Lock()
 
 
@@ -155,6 +163,10 @@ def recog_thread():
 
 
 def 語音辨識google(次數=15):
+    if not common.mic:
+        print('<<無麥克風裝置, 無法使用語音辨識>>')
+        return
+
     if common.recog_service:
         print("<<語音辨識已啟動>>")
         return 
@@ -188,6 +200,10 @@ def 語音辨識google(次數=15):
 #     common.recog_paused = False
 
 def 語音辨識azure(key, location='westus'):
+    if not common.mic:
+        print('<<無麥克風裝置, 無法使用語音辨識>>')
+        return
+
     if common.recog_service:
         print("<<語音辨識已啟動>>")
         return 
