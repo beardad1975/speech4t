@@ -5,18 +5,18 @@ import setuptools
 
 setuptools.setup(
     name="speech4t",
-    version="0.0.5",
+    version="0.0.6",
     author="Wen-Hung, Chang 張文宏",
     author_email="beardad1975@nmes.tyc.edu.tw",
-    description="Speech wrapper for Teenagers",
-    long_description="Speech wrapper for Teenagers",
+    description="Speech wrapper library for Teenagers",
+    long_description="Speech wrapper library for Teenagers",
     long_description_content_type="text/markdown",
     url="https://github.com/beardad1975/speech4t",
     #packages=setuptools.find_packages(),
     platforms=["Windows"],
-    python_requires=">=3.5",
+    python_requires=">=3.8",
     packages=['speech4t','語音模組'],
-    install_requires = ['pywin32>=228'],
+    install_requires = ['pywin32>=305','SpeechRecognition >= 3.9.0'],
         classifiers=[
             "Programming Language :: Python :: 3",
             "License :: OSI Approved :: MIT License",

@@ -27,7 +27,7 @@ common.recognizer.pause_threshold = 0.5
 try:
     common.mic = sr.Microphone()
 except OSError:
-    print('<<無麥克風裝置, 無法使用語音辨識>>')
+    print('<<無麥克風裝置, 無法使用語音辨識>>\n')
     common.mic = None
 
 common.lock = threading.Lock()
@@ -79,7 +79,7 @@ def recog_callback(recognizer, audio):
                     key=common.recog_key, location=common.recog_location )
 
         if text :
-            print('<<',common.recog_service, '辨識為: ', text,'>>')
+            #print('<<',common.recog_service, '辨識為: ', text,'>>\n')
             
             with common.lock:
                 common.recog_text = text
@@ -89,19 +89,19 @@ def recog_callback(recognizer, audio):
             if common.recog_countdown <= 0 :
                 common.stopper(wait_for_stop=False)
                 common.recog_service = False
-                print('<<超過次數，語音辨識程式停止>>')
+                print('<<超過次數，語音辨識程式停止>>\n')
 
     except sr.UnknownValueError:
             print("<<語音內容無法辨識>>")
             common.recog_countdown -= 1
     except sr.RequestError as e:
-            print('<<',common.recog_service,"語音辦識無回應(可能無網路或是超過限制)>>: {0}".format(e))
+            print('<<',common.recog_service,"語音辦識無回應(可能無網路或是超過限制)>>: {0}\n".format(e))
             common.recog_countdown -= 1
 
 ########## rewrite background listen recog thread
 def recog_thread():
     with common.mic as source:
-        print('<<校正麥克風...>>')
+        print('<<校正麥克風...>>\n')
         common.recognizer.adjust_for_ambient_noise(source)  
         
 
@@ -114,7 +114,7 @@ def recog_thread():
             try:
                 voice = common.recognizer.listen(source, timeout=3, phrase_time_limit=4)
             except sr.WaitTimeoutError:
-                print('<<超過等待時間未有聲音>>')
+                print('<<超過等待時間未有聲音>>\n')
                 time.sleep(0.1)
                 continue
 
@@ -128,11 +128,11 @@ def recog_thread():
             try:
                 if common.recog_service == 'google':
                     text = common.recognizer.recognize_google(voice,language="zh-TW" )
-                    print("<<Google 語音辨識為:", text,'>>')
+                    #print("<<Google 語音辨識為:", text,'>>\n')
                 elif common.recog_service == 'azure':
                     text = common.recognizer.recognize_azure(voice,language="zh-TW",
                         key=common.recog_key, location=common.recog_location )
-                    print("<<Azure 語音辨識為:", text,'>>')
+                    #print("<<Azure 語音辨識為:", text,'>>\n')
 
                 #text = common.recognizer.recognize_google(voice, language="zh-tw")
                 #print("<<Google 語音辨識為:", text,'>>')
@@ -148,15 +148,15 @@ def recog_thread():
                         common.recog_text = text
                     common.recog_countdown -= 1
                     if common.recog_countdown <= 0 :
-                        print('<<超過次數，語音辨識程式停止>>')
+                        print('<<超過次數，語音辨識程式停止>>\n')
                         common.recog_service = False
                         break
                         
             except sr.UnknownValueError:
-                    print("<<語音內容無法辨識>>")
+                    print("<<語音內容無法辨識>>\n")
                     common.recog_countdown -= 1
             except sr.RequestError as e:
-                    print('<<',common.recog_service,"語音辦識無回應(可能無網路或是超過限制)>>: {0}".format(e))
+                    print('<<',common.recog_service,"語音辦識無回應(可能無網路或是超過限制)>>: {0}\n".format(e))
                     common.recog_countdown -= 1       
             
                     
@@ -164,11 +164,11 @@ def recog_thread():
 
 def 語音辨識google(次數=15):
     if not common.mic:
-        print('<<無麥克風裝置, 無法使用語音辨識>>')
+        print('<<無麥克風裝置, 無法使用語音辨識>>\n')
         return
 
     if common.recog_service:
-        print("<<語音辨識已啟動>>")
+        print("<<語音辨識已啟動>>\n")
         return 
 
     # start recog service
@@ -180,7 +180,7 @@ def 語音辨識google(次數=15):
     t.daemon = True
     t.start()  
 
-    print('<<開始語音辨識: 採google服務>>')
+    print('<<開始語音辨識: 採google服務>>\n')
 
 
 # def 語音辨識google(次數=15):
@@ -201,11 +201,11 @@ def 語音辨識google(次數=15):
 
 def 語音辨識azure(key, location='westus'):
     if not common.mic:
-        print('<<無麥克風裝置, 無法使用語音辨識>>')
+        print('<<無麥克風裝置, 無法使用語音辨識>>\n')
         return
 
     if common.recog_service:
-        print("<<語音辨識已啟動>>")
+        print("<<語音辨識已啟動>>\n")
         return 
 
     common.recog_countdown = 1000
@@ -264,13 +264,13 @@ def 暫停語音辨識():
             common.recog_text = ''
             common.recog_paused = True
             common.recog_discard = True
-        print('<<語音辨識暫停>>')    
+        print('<<語音辨識暫停>>\n')    
 
 def 繼續語音辨識():
     if common.recog_paused:
         with common.lock:
             common.recog_paused = False
-        print('<<語音辨識繼續>>')
+        print('<<語音辨識繼續>>\n')
 
 def 語音辨識中嗎():
     return  not common.recog_paused and not common.recog_discard
